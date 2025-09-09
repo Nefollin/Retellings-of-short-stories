@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Novel Summarizer — Preview (API-ready)</title>
+<style>
+  :root{
+    --bg:#0f1115;--panel:#171a21;--panel-2:#1e232d;--text:#e6e7ea;--muted:#9aa3b2;--acc:#2dd4bf;--acc-2:#60a5fa;--danger:#f43f5e;--ok:#22c55e;--border:#2a3140;
+    --radius:16px;--radius-sm:12px;--shadow:0 8px 24px rgba(0,0,0,.35),0 1px 0 rgba(255,255,255,.02) inset;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(180deg,#0e1014,#0c0f14);color:var(--text);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji"}
+  a{color:var(--acc-2);text-decoration:none}
+  .app{max-width:980px;margin:0 auto;padding-bottom:96px}
+  header{position:sticky;top:0;z-index:10;background:rgba(15,17,21,.8);backdrop-filter:saturate(140%) blur(12px);border-bottom:1px solid var(--border)}
+  .topbar{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:14px 16px}
+  .brand{display:flex;gap:10px;align-items:center}
+  .logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--acc),var(--acc-2));box-shadow:0 4px 12px rgba(45,212,191,.35)}
+  .title{font-weight:700;letter-spacing:.2px}
+  .tabs{display:flex;gap:6px}
+  .tab{padding:8px 12px;border:1px solid var(--border);border-radius:10px;background:var(--panel);color:var(--text);cursor:pointer}
+  .tab[aria-selected="true"]{background:var(--acc-2);border-color:transparent;color:#071019}
+
+  main{padding:18px 16px 24px}
+
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .card+.card{margin-top:14px}
+  .section{margin:14px 0}
+  .section h3{margin:0 0 10px;font-size:16px;font-weight:700}
+
+  .row{display:flex;gap:14px;flex-wrap:wrap}
+  .col{flex:1 1 320px}
+
+  .form{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px}
+  .form input[type="url"], .form select, .form input[type="text"]{width:100%;padding:12px 12px;border-radius:12px;border:1px solid var(--border);background:var(--panel-2);color:var(--text)}
+  .btn{padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--panel-2);color:var(--text);cursor:pointer}
+  .btn.acc{background:linear-gradient(135deg,var(--acc),var(--acc-2));border-color:transparent;color:#061017;font-weight:700}
+  .btn.ghost{background:transparent}
+  .btn.small{padding:8px 10px;border-radius:10px}
+
+  .list{display:flex;flex-direction:column;gap:10px}
+  .item{display:flex;gap:12px;padding:12px;border:1px solid var(--border);border-radius:14px;background:var(--panel-2)}
+  .item .cover{width:64px;height:64px;border-radius:10px;flex:0 0 auto;background:#0a0d12 center/cover no-repeat}
+  .meta{flex:1 1 auto;min-width:0}
+  .titleline{display:flex;gap:8px;align-items:center}
+  .name{font-weight:700}
+  .src{color:var(--muted);font-size:12px}
+  .desc{margin-top:4px;color:var(--muted);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .actions{display:flex;gap:8px;align-items:center}
+
+  .chip{font-size:12px;color:#091018;background:linear-gradient(135deg,var(--acc),var(--acc-2));padding:3px 8px;border-radius:8px}
+  .iconbtn{width:36px;height:36px;border-radius:10px;border:1px solid var(--border);background:var(--panel);display:grid;place-items:center;cursor:pointer}
+
+  /* Novel detail */
+  .novel-head{display:flex;gap:16px;padding:14px}
+  .novel-cover{width:96px;height:128px;border-radius:14px;background:#0a0d12 center/cover no-repeat;border:1px solid var(--border)}
+  .novel-info{flex:1}
+  .novel-info h2{margin:0 0 6px}
+  .muted{color:var(--muted)}
+  .list.summaries .item{align-items:center}
+  .grow{flex:1}
+
+  .empty{padding:36px;text-align:center;color:var(--muted)}
+
+  footer.nav{position:fixed;left:0;right:0;bottom:0;background:rgba(15,17,21,.9);backdrop-filter:blur(12px);border-top:1px solid var(--border)}
+  .navwrap{max-width:980px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr)}
+  .navbtn{padding:12px;text-align:center;cursor:pointer;color:var(--muted)}
+  .navbtn[aria-current="page"]{color:#fff}
+
+  /* tiny icons */
+  .i{font-style:normal;display:inline-block;vertical-align:middle}
+  .i::before{content:attr(data-i)}
+
+  .hint{margin:10px 2px 0;color:var(--muted)}
+  .danger{color:var(--danger)}
+</style>
+</head>
+<body>
+  <header>
+    <div class="topbar">
+      <div class="brand"><div class="logo"></div><div class="title">Novel Summarizer</div></div>
+      <div class="tabs">
+        <button class="tab" data-tab="home" aria-selected="true">Главная</button>
+        <button class="tab" data-tab="bookmarks">Закладки</button>
+        <button class="tab" data-tab="menu">Меню</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="app">
+    <main id="view-home">
+      <div class="card section">
+        <h3>Добавить новеллу</h3>
+        <div class="form">
+          <input id="url" type="url" placeholder="https://example.com/novel/..." />
+          <select id="lang"><option>RU</option><option>EN</option><option>DE</option></select>
+          <select id="depth"><option value="short">Кратко</option><option value="mid">Средне</option><option value="full">Подробно</option></select>
+          <button class="btn acc" id="start">Начать обработку</button>
+        </div>
+        <p class="hint" id="mode-hint"></p>
+      </div>
+
+      <div class="section">
+        <h3>Последние новеллы</h3>
+        <div class="list" id="novels-list"></div>
+      </div>
+    </main>
+
+    <main id="view-bookmarks" hidden>
+      <div class="section"><h3>Закладки</h3></div>
+      <div class="list" id="bm-list"></div>
+    </main>
+
+    <main id="view-menu" hidden>
+      <div class="card" style="padding:16px">
+        <h3>Аккаунт и настройки</h3>
+        <div class="row">
+          <div class="col">
+            <div class="item">
+              <div class="grow">
+                <div class="name">API URL</div>
+                <div class="muted">Укажи адрес backend, например: https://your-app.onrender.com</div>
+                <div style="margin-top:8px;display:flex;gap:8px">
+                  <input id="api-base" type="text" placeholder="(пусто = офлайн демо)" style="flex:1" />
+                  <button class="btn small" id="save-api">Сохранить</button>
+                  <button class="btn small ghost" id="clear-api">Сбросить</button>
+                </div>
+              </div>
+            </div>
+            <div class="item">
+              <div class="grow">
+                <div class="name">Удалить аккаунт</div>
+                <div class="muted">Имитация действия в прототипе</div>
+              </div>
+              <button class="btn small" onclick="alert('Демо: аккаунт удалён (симуляция)')">Удалить</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Novel detail -->
+    <main id="view-novel" hidden>
+      <div class="card">
+        <div class="novel-head">
+          <div class="novel-cover" id="novel-cover"></div>
+          <div class="novel-info">
+            <h2 id="novel-title">Название</h2>
+            <div class="muted">Источник: <a id="novel-src" href="#" target="_blank" rel="noopener">link</a></div>
+            <div id="novel-api" class="muted" style="margin-top:4px"></div>
+            <div style="margin-top:10px;display:flex;gap:8px">
+              <button class="btn small" id="btn-dl-all">Скачать всё</button>
+              <button class="btn small" id="btn-bm"><span class="i" data-i="⭐"></span>&nbsp;В закладки</button>
+              <button class="btn small ghost" onclick="go('home')">← Назад</button>
+            </div>
+          </div>
+        </div>
+        <div class="section" style="padding:0 14px 14px">
+          <h3>Пересказы глав</h3>
+          <div class="list summaries" id="summaries"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <footer class="nav">
+    <div class="navwrap">
+      <div class="navbtn" data-tab="home" aria-current="page">🏠 Главная</div>
+      <div class="navbtn" data-tab="bookmarks">🔖 Закладки</div>
+      <div class="navbtn" data-tab="menu">☰ Меню</div>
+    </div>
+  </footer>
+
+<script>
+/*************** MODE & SETTINGS ***************/
+const API_BASE = localStorage.getItem('api_base') || '';
+const modeHint = document.getElementById('mode-hint');
+modeHint.innerHTML = !API_BASE
+  ? 'Режим: <b>офлайн демо</b> — без сети. Обложки рисуются локально, пересказы — мок.'
+  : `Режим: <b>онлайн</b>. Backend: <code>${API_BASE}</code>. Будут сети и реальные пересказы.`;
+
+// Settings UI
+const apiInput = document.getElementById('api-base');
+apiInput.value = API_BASE;
+document.getElementById('save-api').onclick = () => {
+  localStorage.setItem('api_base', apiInput.value.trim());
+  location.reload();
+};
+document.getElementById('clear-api').onclick = () => {
+  localStorage.removeItem('api_base');
+  location.reload();
+};
+
+/*************** OFFLINE COVER (NO NETWORK) ***************/
+function coverDataURL(seedText){
+  const w=300,h=420; const title=(seedText||'Novel').slice(0,28).replace(/&/g,'&amp;');
+  const svg=`<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}'>
+    <defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'>
+      <stop offset='0' stop-color='#14b8a6'/><stop offset='1' stop-color='#60a5fa'/>
+    </linearGradient></defs>
+    <rect width='100%' height='100%' fill='url(#g)'/>
+    <rect x='10' y='10' width='${w-20}' height='${h-20}' rx='18' fill='rgba(0,0,0,0.35)'/>
+    <text x='50%' y='50%' text-anchor='middle' fill='white' font-size='24' font-family='system-ui,Segoe UI,Roboto' dy='.35em'>${title}</text>
+  </svg>`;
+  return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+}
+
+/*************** STATE ***************/
+const state = {
+  novels: !API_BASE ? [
+    { id: crypto.randomUUID(), title: 'Все грядущие дни', src: 'https://example.com/all-tomorrows', cover: coverDataURL('Все грядущие дни'), depth: 'short', lang: 'RU', summaries: Array.from({length:6}).map((_,i)=>({ n:i+1, text:`[Демо] Пересказ главы ${i+1}…` })) },
+    { id: crypto.randomUUID(), title: 'Псих', src: 'https://author-novels.com/psycho', cover: coverDataURL('Псих'), depth: 'mid', lang: 'RU', summaries: Array.from({length:5}).map((_,i)=>({ n:i+1, text:`[Демо] Сжатое содержание ${i+1}…` })) }
+  ] : [],
+  bookmarks: JSON.parse(localStorage.getItem('ns_bm')||'[]'),
+  currentNovelApiId: null,
+};
+
+/*************** ROUTING ***************/
+const views = {
+  home: document.getElementById('view-home'),
+  bookmarks: document.getElementById('view-bookmarks'),
+  menu: document.getElementById('view-menu'),
+  novel: document.getElementById('view-novel'),
+};
+function go(tab){
+  for(const k in views){views[k].hidden = true}
+  const target = tab==='novel'? 'novel' : tab; views[target].hidden = false;
+  document.querySelectorAll('.tab').forEach(b=>b.setAttribute('aria-selected', String(b.dataset.tab===tab)));
+  document.querySelectorAll('.navbtn').forEach(b=>b.setAttribute('aria-current', b.dataset.tab===tab? 'page':'false'));
+  if(tab==='home') renderHome();
+  if(tab==='bookmarks') renderBookmarks();
+}
+Array.from(document.querySelectorAll('.navbtn')).forEach(b=>b.onclick=()=>go(b.dataset.tab));
+Array.from(document.querySelectorAll('.tab')).forEach(b=>b.onclick=()=>go(b.dataset.tab));
+
+/*************** RENDER HOME ***************/
+const list = document.getElementById('novels-list');
+function renderHome(){
+  list.innerHTML='';
+  state.novels.forEach(n=>list.appendChild(novelItem(n)));
+}
+function novelItem(n){
+  const el = document.createElement('div'); el.className='item';
+  el.innerHTML = `
+    <div class="cover" style="background-image:url('${n.cover || coverDataURL(n.title)}')"></div>
+    <div class="meta">
+      <div class="titleline"><div class="name">${n.title}</div><span class="chip">${n.lang || 'RU'} · ${depthLabel(n.depth||'short')}</span></div>
+      <div class="src">${n.src || ''}</div>
+      <div class="desc">${n.summaries?.[0]?.text || 'Описание появится после пересказа'}</div>
+    </div>
+    <div class="actions">
+      <button class="iconbtn" title="Скачать всё" data-act="dl">⬇️</button>
+      <button class="iconbtn" title="В закладки" data-act="bm">🔖</button>
+      <button class="iconbtn" title="Открыть" data-act="open">📖</button>
+    </div>`;
+  el.querySelector('[data-act="dl"]').onclick=()=>downloadNovel(n);
+  el.querySelector('[data-act="bm"]').onclick=()=>toggleBM(n.id);
+  el.querySelector('[data-act="open"]').onclick=()=>openNovel(n.id);
+  return el;
+}
+function depthLabel(d){return d==='short'? 'Кратко': d==='mid'? 'Средне':'Подробно'}
+
+/*************** BOOKMARKS ***************/
+const bmList = document.getElementById('bm-list');
+function renderBookmarks(){
+  bmList.innerHTML='';
+  const ids = new Set(state.bookmarks);
+  const arr = state.novels.filter(n=>ids.has(n.id));
+  if(!arr.length){ bmList.innerHTML = `<div class=\"empty\">Пока пусто. Добавляйте новеллы с главной страницы.</div>`; return; }
+  arr.forEach(n=>bmList.appendChild(novelItem(n)));
+}
+function toggleBM(id){
+  const idx = state.bookmarks.indexOf(id);
+  if(idx>-1) state.bookmarks.splice(idx,1); else state.bookmarks.push(id);
+  localStorage.setItem('ns_bm', JSON.stringify(state.bookmarks));
+  renderBookmarks();
+}
+
+/*************** NOVEL DETAIL ***************/
+let currentNovel = null;
+function openNovel(id){
+  currentNovel = state.novels.find(n=>n.id===id);
+  if(!currentNovel) return;
+  document.getElementById('novel-cover').style.backgroundImage = `url('${currentNovel.cover || coverDataURL(currentNovel.title)}')`;
+  document.getElementById('novel-title').textContent = currentNovel.title;
+  const a = document.getElementById('novel-src'); a.href = currentNovel.src || '#'; a.textContent = currentNovel.src || '';
+  document.getElementById('novel-api').textContent = API_BASE ? `API: ${API_BASE}` : 'API: офлайн-демо';
+  const cont = document.getElementById('summaries'); cont.innerHTML='';
+
+  // offline: render demo summaries
+  if(!API_BASE){
+    currentNovel.summaries.forEach(s=>cont.appendChild(chapterRowDemo(s)));
+  } else {
+    // online: list chapters status from API
+    if(currentNovel.apiId){
+      loadChaptersFromApi(currentNovel.apiId);
+    } else {
+      // until chapters loaded, show hint
+      const row = document.createElement('div'); row.className='item'; row.innerHTML = `<div class='muted'>Загружаю список глав…</div>`; cont.appendChild(row);
+    }
+  }
+
+  document.getElementById('btn-bm').onclick=()=>toggleBM(currentNovel.id);
+  document.getElementById('btn-dl-all').onclick=()=>API_BASE && currentNovel.apiId ? (location.href = `${API_BASE}/api/novels/${currentNovel.apiId}/download.txt`) : downloadNovel(currentNovel);
+  go('novel');
+}
+
+function chapterRowDemo(s){
+  const row = document.createElement('div'); row.className='item';
+  row.innerHTML = `<div class='muted'>Том 1 · Глава ${s.n}</div><div class='grow'></div><button class='btn small' data-n='${s.n}'>Скачать</button>`;
+  row.querySelector('button').onclick=()=>downloadChapter(currentNovel, s.n);
+  return row;
+}
+
+function renderApiChapters(list){
+  const cont = document.getElementById('summaries'); cont.innerHTML='';
+  list.forEach(ch => {
+    const row = document.createElement('div'); row.className='item';
+    row.innerHTML = `
+      <div class='muted'>Том 1 · Глава ${ch.n}</div>
+      <div class='grow'></div>
+      ${ch.hasSummary ? '<span class="chip">готово</span>' : ''}
+      <button class='btn small' data-n='${ch.n}'>${ch.hasSummary ? 'Пересчитать' : 'Сгенерировать'}</button>
+    `;
+    row.querySelector('button').onclick = async () => {
+      row.querySelector('button').disabled = true; row.querySelector('button').textContent = 'Генерация…';
+      try{
+        await fetch(`${API_BASE}/api/novels/${currentNovel.apiId}/chapters/${ch.n}/summary`, { method:'POST' });
+        await loadChaptersFromApi(currentNovel.apiId);
+      }catch(e){ alert('Ошибка: '+e.message); }
+    };
+    cont.appendChild(row);
+  });
+}
+
+/*************** DOWNLOAD (OFFLINE) ***************/
+function downloadChapter(novel, n){
+  const s = novel.summaries.find(x=>x.n===n);
+  const text = `# ${novel.title}\nИсточник: ${novel.src}\nЯзык: ${novel.lang}\nГлубина: ${depthLabel(novel.depth)}\n\nГлава ${n}\n\n${s.text}\n`;
+  saveFile(text, `${slug(novel.title)}_chapter_${n}.txt`);
+}
+function downloadNovel(novel){
+  const text = `# ${novel.title}\nИсточник: ${novel.src}\nЯзык: ${novel.lang}\nГлубина: ${depthLabel(novel.depth)}\n\n` + (novel.summaries||[]).map(s=>`Глава ${s.n}\n${s.text}\n`).join("\n");
+  saveFile(text, `${slug(novel.title)}_summaries.txt`);
+}
+function saveFile(text, name){
+  const blob = new Blob([text],{type:'text/plain;charset=utf-8'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+}
+const slug = s=>s.toLowerCase().replace(/[^a-zа-я0-9]+/gi,'-').replace(/^-+|-+$/g,'');
+
+/*************** ADD NOVEL ***************/
+const urlEl = document.getElementById('url');
+const langEl = document.getElementById('lang');
+const depthEl = document.getElementById('depth');
+const startBtn = document.getElementById('start');
+startBtn.onclick = async ()=>{
+  const u = urlEl.value.trim(); if(!u){ alert('Вставьте URL новеллы'); return; }
+  if(!API_BASE){ // offline demo
+    const title = guessTitleFromURL(u);
+    const novel = { id: crypto.randomUUID(), title, src: u, cover: coverDataURL(title), depth: depthEl.value, lang: langEl.value, summaries: Array.from({length:6}).map((_,i)=>({n:i+1,text:`[Демо] Пересказ главы ${i+1} для «${title}». Здесь будет текст, сгенерированный API.`})) };
+    state.novels.unshift(novel); urlEl.value=''; renderHome(); openNovel(novel.id);
+  } else { // online
+    try{
+      startBtn.disabled = true; startBtn.textContent = 'Обработка…';
+      const r = await fetch(`${API_BASE}/api/process`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ url: u, lang: langEl.value, depth: depthEl.value, style:'neutral' }) });
+      const data = await r.json(); if(!r.ok) throw new Error(data.error || 'API error');
+      // add shell novel item
+      const title = guessTitleFromURL(u);
+      const novel = { id: crypto.randomUUID(), title, src: u, cover: coverDataURL(title), depth: depthEl.value, lang: langEl.value, summaries: [] };
+      novel.apiId = data.id; state.novels.unshift(novel); state.currentNovelApiId = data.id; urlEl.value=''; renderHome(); openNovel(novel.id);
+      await loadChaptersFromApi(data.id);
+    }catch(e){ alert('Ошибка: ' + e.message); }
+    finally{ startBtn.disabled=false; startBtn.textContent='Начать обработку'; }
+  }
+}
+function guessTitleFromURL(u){
+  try{const p=new URL(u);return decodeURIComponent((p.pathname.split('/').filter(Boolean).pop()||p.hostname)).replace(/[-_]+/g,' ').replace(/\b\w/g,m=>m.toUpperCase())}catch{return u}
+}
+
+async function loadChaptersFromApi(apiId){
+  try{
+    const r = await fetch(`${API_BASE}/api/novels/${apiId}`);
+    const d = await r.json(); if(!r.ok) throw new Error(d.error || 'API error');
+    if(currentNovel){ currentNovel.apiId=apiId; currentNovel.title = d.title || currentNovel.title; }
+    renderApiChapters(d.chapters || []);
+  }catch(e){ alert('Ошибка загрузки глав: '+e.message); }
+}
+
+/*************** INIT ***************/
+renderHome();
+</script>
+
+<!--
+Backend reference (server.js): см. предыдущие инструкции в чате. 
+API ожидается совместимое:
+  POST   /api/process {url,lang,depth,style} -> {id, chapters:[{n,url}]}
+  GET    /api/novels/:id -> {title, chapters:[{n,hasSummary}]}
+  POST   /api/novels/:id/chapters/:n/summary -> {n, summary}
+  GET    /api/novels/:id/download.txt -> text
+-->
+</body>
+</html>
